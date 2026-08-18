@@ -73,7 +73,10 @@ Never have multiple AIs directly edit main.
 ## Git baseline
 Repository: TrongPhuc1609/CEV---AI_INSPECTION
 Baseline: v0.5.0
-Planned first feature branch: feature/rule-cmd-v1
+Current development branch: feature/rule-cmd-v1
+
+## Current handoff status
+The v0.5.0 source tree and multi-AI governance files are now staged on `feature/rule-cmd-v1`. Local baseline test result: 4 passed. This branch is for establishing the shared codebase and preparing the v0.6 Rule.cmd implementation; it is not yet the v0.6 implementation itself.
 
 ## Architecture change record
 No pending architecture change approved. Major changes must record DATE, DECISION, REASON, ALTERNATIVES, IMPACT and MIGRATION here.

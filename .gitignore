@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime / inspection data
+inspection_data/
+logs/
+*.log
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Model binaries and large datasets
+models/*.pt
+models/*.onnx
+models/*.engine
+datasets/
+artifacts/
+
+# Build/package outputs
+dist/
+build/
+*.zip
