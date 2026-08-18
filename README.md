@@ -1,4 +1,4 @@
-# CEV — AI INSPECTION
+# Loc
 
 Production-oriented AI inspection project for detecting missing, extra, wrong-type components and oil/grease application defects on slowly moving products.
 
