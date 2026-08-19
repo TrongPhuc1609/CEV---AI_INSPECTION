@@ -34,15 +34,16 @@ v0.9 Runtime stabilization: COMPLETE in software/mock scope; physical hardware a
 ## v0.9 verified acceptance
 - Rule.cmd v1.0 exists and is human-readable.
 - Parser compiles typed Camera/Trigger/Encoder/Lighting/Model/ROI/Recheck/Region/ProductDecision/PLC/Evidence/Audit config.
-- InspectionPlan validates cross-references.
+- InspectionPlan validates cross-references and configured component positions.
 - Production pipeline can be constructed from Rule.cmd.
 - Detection preserves class counts so extra/wrong components cannot be hidden by a dominant class.
 - Recheck requests a new acquisition/observation for each attempt.
 - Missing required regions and final UNCERTAIN are fail-safe NG.
+- Camera/trigger startup errors fail safe to PLC NG when no product identity is available.
 - Grease coverage and forbidden/target-zone checks are deterministic when model evidence is supplied.
 - Anomaly method is supported by Rule Engine.
 - Final product decision is sent to PLC and audit JSON is written when enabled.
-- Automated tests pass.
+- Automated tests pass: 15 passed in the development environment.
 
 ## Current next task
 V0.95 Hardware Integration:
@@ -56,6 +57,7 @@ V0.95 Hardware Integration:
 ## Inspection logic
 Missing/extra: YOLO or RT-DETR detection + expected class/quantity/tolerance.
 Wrong type: detection + classification or constrained classification.
+Position: configured expected position + tolerance when required.
 Oil/grease: segmentation for coverage + target/forbidden zone checks; anomaly detection may cross-check.
 Thresholds require real-line calibration; Rule.cmd example values are not production validated.
 
@@ -81,7 +83,7 @@ Baseline branch: main
 Current development branch: feature/v0.9-completion
 
 ## Current handoff status
-v0.9 software stabilization is implemented on feature/v0.9-completion. Local verification in the development environment: 14 tests passed. The implementation is mock/simulation validated; physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
+v0.9 software stabilization is implemented on feature/v0.9-completion. Local verification in the development environment: 15 tests passed. The implementation is mock/simulation validated; physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
@@ -93,7 +95,7 @@ v0.9 software stabilization is implemented on feature/v0.9-completion. Local ver
 
 ## Architecture change record
 DATE: 2026-08-19
-DECISION: Make Rule.cmd compile into a typed InspectionPlan and drive the reference runtime; make recheck acquire a new frame; make errors/missing regions fail-safe.
+DECISION: Make Rule.cmd compile into a typed InspectionPlan and drive the reference runtime; make recheck acquire a new frame; make errors/missing regions fail-safe; make component position checks fully configurable.
 REASON: Close the v0.9 gaps between configuration, runtime, deterministic decision logic and auditability.
 ALTERNATIVES: Keep hard-coded runtime wiring; rejected because product-specific changes would require code changes and could drift from Rule.cmd.
 IMPACT: Adds typed plan models, config-driven factory, durable audit JSON, expanded rule handling and runtime tests.
