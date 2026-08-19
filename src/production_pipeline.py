@@ -47,6 +47,7 @@ class ProductionInspectionPipeline:
         camera_cfg = next(iter(plan.cameras.values()))
         trigger_cfg = next(iter(plan.triggers.values()))
         camera = hardware.camera(camera_cfg)
+        camera.configure(**camera_cfg.settings)
         trigger = hardware.trigger(trigger_cfg)
         light = None
         profile = None
@@ -108,7 +109,7 @@ class ProductionInspectionPipeline:
             return None
 
         inspection = self.orchestrator.start_product(product_id)
-        self.tracker.start(product_id, inspection.inspection_id, acquired.trigger.position)
+        self.tracker.start(product_id, inspection.inspection_id, acquired.trigger.position, acquired.trigger.timestamp)
         for region_id in self.orchestrator.required_regions():
             try:
                 self._inspect_region(inspection, product_id, region_id, acquired)
@@ -144,7 +145,7 @@ class ProductionInspectionPipeline:
             if acquired.trigger.product_id and acquired.trigger.product_id != product_id:
                 raise RuntimeError("TRIGGER_PRODUCT_MISMATCH")
             frame = acquired.frame
-            self.tracker.update(product_id, acquired.trigger.position)
+            self.tracker.update(product_id, acquired.trigger.position, acquired.trigger.timestamp)
             roi = self.roi_manager.get(region_id)
             ai_start = monotonic()
             result = self.vision.inspect(product_id, inspection.inspection_id, region_id,
