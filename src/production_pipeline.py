@@ -18,6 +18,7 @@ from .models.result import Status, Observation
 from .integration.plc import PLCCommand, Decision
 from .integration.hardware_adapters import HardwareFactory, MockHardwareFactory
 from .integration.timing import TimingBudget, TimingCollector
+from .integration.motion import MotionSafetyMonitor
 from .integration.release_gate import ProductionReleaseGate
 from .audit.store import InspectionAuditStore
 
@@ -25,7 +26,7 @@ from .audit.store import InspectionAuditStore
 class ProductionInspectionPipeline:
     def __init__(self, acquisition, roi_manager, tracker, vision, rule_engine,
                  orchestrator, plc, config=None, audit_store=None, timing=None,
-                 correlator=None):
+                 correlator=None, motion_monitor=None):
         self.acquisition = acquisition
         self.roi_manager = roi_manager
         self.tracker = tracker
@@ -37,6 +38,7 @@ class ProductionInspectionPipeline:
         self.audit_store = audit_store
         self.timing = timing or TimingCollector()
         self.correlator = correlator
+        self.motion_monitor = motion_monitor
 
     @classmethod
     def from_rule_file(cls, rule_path, model_registry, plc=None,
@@ -94,9 +96,11 @@ class ProductionInspectionPipeline:
         audit = InspectionAuditStore(plan.audit.output_path) if plan.audit.enabled else None
         correlator = TriggerFrameCorrelator(plan.correlation.max_timestamp_delta_ms,
                                             plan.correlation.max_position_delta)
+        motion = MotionSafetyMonitor(plan.motion.nominal_velocity, plan.motion.min_velocity,
+                                     plan.motion.max_velocity, plan.motion.camera_to_reject_distance)
         return cls(acquisition, rois, ProductTracker(), VisionPipeline(adapters), engine,
                    orchestrator, plc_driver, config, audit, TimingCollector(timing_budget),
-                   correlator)
+                   correlator, motion)
 
     def start(self):
         self.acquisition.start()
@@ -104,9 +108,36 @@ class ProductionInspectionPipeline:
     def stop(self):
         self.acquisition.stop()
 
+    def _velocity_for_trigger(self, trigger, product_id):
+        metadata = trigger.metadata or {}
+        measured = metadata.get("velocity_units_per_s", metadata.get("velocity"))
+        if measured is not None:
+            try:
+                track = self.tracker.tracks.get(product_id)
+                if track:
+                    track.velocity_units_per_s = float(measured)
+                return float(measured), True
+            except (TypeError, ValueError):
+                return None, True
+        track = self.tracker.tracks.get(product_id)
+        measured = track.velocity_units_per_s if track else None
+        if self.motion_monitor:
+            return self.motion_monitor.effective_velocity(measured), False
+        return measured, False
+
+    def _motion_check(self, trigger, product_id):
+        if not self.motion_monitor:
+            return None
+        velocity, measured = self._velocity_for_trigger(trigger, product_id)
+        assessment = self.motion_monitor.assess(velocity)
+        if not assessment.velocity_ok:
+            return [*assessment.errors]
+        return assessment
+
     def run_product(self):
         if not self.acquisition.started:
             self.start()
+        cycle_start = monotonic()
         try:
             acquisition_start = monotonic()
             acquired = self.acquisition.acquire()
@@ -124,8 +155,15 @@ class ProductionInspectionPipeline:
             self.plc.send(PLCCommand(Decision.NG, "UNKNOWN", "NO_INSPECTION", ["TRIGGER_NO_PRODUCT_ID"]))
             return None
 
+        motion = self._motion_check(acquired.trigger, product_id)
+        if isinstance(motion, list):
+            self.plc.send(PLCCommand(Decision.NG, product_id, "NO_INSPECTION", motion))
+            return None
+
         inspection = self.orchestrator.start_product(product_id)
         self.tracker.start(product_id, inspection.inspection_id, acquired.trigger.position, acquired.trigger.timestamp)
+        if motion is not None and motion.velocity is not None:
+            self.tracker.tracks[product_id].velocity_units_per_s = motion.velocity
         for region_id in self.orchestrator.required_regions():
             try:
                 self._inspect_region(inspection, product_id, region_id, acquired)
@@ -146,6 +184,17 @@ class ProductionInspectionPipeline:
                    if r.final_observation and r.final_observation.error_code]
         if inspection.missing_regions:
             reasons.extend("MISSING_REGION:" + r for r in inspection.missing_regions)
+
+        elapsed_ms = (monotonic() - cycle_start) * 1000.0
+        reject_window_ms = motion.reject_window_ms if motion is not None else None
+        if not MotionSafetyMonitor.within_reject_window(elapsed_ms, reject_window_ms):
+            decision = Decision.NG
+            reasons.append("REJECT_WINDOW_EXCEEDED")
+        self.timing.measure("cycle", cycle_start, metadata={
+            "product_id": product_id,
+            "reject_window_ms": reject_window_ms,
+            "elapsed_ms": elapsed_ms,
+        })
 
         command = PLCCommand(decision, product_id, inspection.inspection_id, reasons)
         plc_start = monotonic()
