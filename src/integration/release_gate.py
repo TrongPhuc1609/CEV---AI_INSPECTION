@@ -20,8 +20,9 @@ class ProductionReleaseGate:
         except ValueError as exc:
             errors.append(str(exc))
 
-        if real_hardware and str(getattr(plan.cameras[next(iter(plan.cameras))], "driver", "MOCK")).upper() == "MOCK":
-            errors.append("REAL_HARDWARE_REQUIRES_NON_MOCK_CAMERA")
+        if real_hardware and plan.cameras:
+            if str(next(iter(plan.cameras.values())).driver).upper() == "MOCK":
+                errors.append("REAL_HARDWARE_REQUIRES_NON_MOCK_CAMERA")
         if real_hardware and str(plan.plc.driver).upper() == "MOCK":
             errors.append("REAL_HARDWARE_REQUIRES_NON_MOCK_PLC")
 
