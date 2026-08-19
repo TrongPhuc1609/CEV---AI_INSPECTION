@@ -24,6 +24,7 @@ Pipeline: Camera -> Trigger -> Lighting -> Image Acquisition -> Product Tracking
 10. A frame must be correlated to its triggering product before it is accepted for production inspection.
 11. Motion/timing values are configuration and commissioning measurements, never assumptions hidden in code.
 12. Real commissioning must use a bounded, fail-safe acceptance procedure; mock adapters are never physical evidence.
+13. A physical NG reject is not considered successful until the configured PLC acknowledgement contract is satisfied.
 
 ## Baseline status
 v0.1 Foundation: COMPLETE.
@@ -39,7 +40,10 @@ v1.0 Software Release: VERIFIED in software/simulation scope; GitHub Actions CI 
 v1.1 Physical Commissioning Gate: COMPLETE in software scope; merged after CI verification.
 v1.2 Motion/Timing/Frame Correlation: COMPLETE and merged after CI verification.
 v1.3 Velocity/Reject-window/HIL: COMPLETE and merged after CI verification.
-v1.4 Real Hardware Commissioning Harness: IN PROGRESS; vendor-neutral bounded field acceptance code and procedure are being added.
+v1.4 Real Hardware Commissioning Harness: COMPLETE in software scope; merged after CI verification.
+v1.5 Device Health/Capability Contract: COMPLETE in software scope; merged after CI verification.
+v1.6 Image Acquisition/Lighting Contract: COMPLETE in software scope; merged after CI verification.
+v1.7 PLC/Physical Reject Handshake: ACTIVE; implementation is on feature/v1.7-plc-reject and awaits CI/PR merge.
 
 ## V1.0 software acceptance
 - Single CLI supports `validate-rule`, `simulate`, `replay` and `release-gate`.
@@ -76,7 +80,7 @@ v1.4 Real Hardware Commissioning Harness: IN PROGRESS; vendor-neutral bounded fi
 ## V1.4 real hardware commissioning
 Goal: make the software directly testable on a real inspection cell without changing the inspection core.
 
-Implemented on feature branch:
+Implemented:
 - `RealHardwareCommissioning` bounded acceptance runner.
 - Fail-closed preflight rejects MockCamera/MockTrigger/MockPLC.
 - PLC command recording is required so PASS/NG delivery is observable.
@@ -84,11 +88,37 @@ Implemented on feature branch:
 - Controlled guarded reject command helper exists.
 - `docs/V1.4_REAL_HARDWARE_TEST.md` defines safety, acceptance, fault-injection and evidence requirements.
 
+## V1.5 device contract acceptance
+- Camera/trigger/PLC/lighting vendor adapters expose health/capability/self-test through the vendor-neutral device contract.
+- Only READY devices are eligible for physical commissioning.
+- DISCONNECTED/DEGRADED/FAULT states block commissioning.
+- Vendor SDK details remain outside the inspection core.
+
+## V1.6 acquisition/lighting acceptance
+- `AcquiredFrame` carries frame ID, product ID, timestamp, camera ID and optional trigger/exposure/lighting metadata.
+- Invalid frame identity/timestamp is rejected before Vision/Rule processing.
+- Acquisition commissioning requires camera, trigger and lighting READY.
+- Vendor image objects remain outside the inspection core.
+- Physical evidence must include camera/trigger timestamps, exposure/strobe state and measured image-to-decision latency.
+
+## V1.7 PLC / physical reject acceptance
+Goal: make the final NG-to-physical-reject boundary deterministic and observable.
+
+Implemented on feature branch:
+- `RejectController` translates final `PLCCommand` into a vendor-neutral physical reject operation.
+- PASS never emits a reject command.
+- NG emits one command for the inspection.
+- Missing product/inspection identity blocks the command.
+- PLC send exceptions become `FAILED`.
+- When an acknowledgement callback is configured, NG is accepted only after acknowledgement within `ack_timeout_ms`.
+- ACK timeout is not considered successful physical reject execution.
+- `docs/V1.7_PLC_REJECT.md` defines physical evidence requirements.
+
 Required before physical trial:
 1. Implement/select vendor camera adapter.
 2. Implement/select trigger/encoder adapter producing `TriggerEvent` with product_id/timestamp/position/velocity metadata.
 3. Implement lighting adapter and validate strobe/exposure/gain timing.
-4. Implement vendor PLC adapter using the command-recording contract during commissioning.
+4. Implement vendor PLC adapter using the command/acknowledgement contract during commissioning.
 5. Supply real AI model artifacts and SHA-256/model metadata.
 6. Populate production Rule.cmd with real camera/trigger/lighting/PLC drivers and calibrated values.
 7. Record physical camera-to-reject distance and conveyor min/nominal/max velocity.
@@ -109,9 +139,10 @@ Any final region FAIL -> NG.
 Missing region/timeout/camera error/trigger error/AI error/correlation error -> NG.
 UNCERTAIN -> recheck -> NG unless explicitly configured otherwise.
 Reject-window exceeded -> NG.
+PLC reject send/ack failure -> commissioning/physical reject failure; never report successful physical reject.
 
 ## PLC/reject
-Keep inspection result, PLC command and physical reject result distinct. Reject timing must be validated against sensor-to-camera distance, conveyor speed, processing latency, PLC latency and actuator latency.
+Keep inspection result, PLC command and physical reject result distinct. Reject timing must be validated against sensor-to-camera distance, conveyor speed, processing latency, PLC latency and actuator latency. A PLC `NG sent` event is not equivalent to a physically confirmed reject unless the configured acknowledgement/actuator evidence is present.
 
 ## Session protocol
 START: read this file, inspect source tree, confirm baseline/completed/next task.
@@ -123,13 +154,13 @@ Feature branch -> inspect -> implement -> test -> update context -> commit -> PR
 ## Git baseline
 Repository: TrongPhuc1609/Loc
 Baseline branch: main
-Latest main V1.3 merge commit: 3241fa84d26da03562907ce7a54c0d1c36ee1ae1
-V1.3 head before merge: 6c90843c8cde31ce0ad0b2b4b0a05036d1e878ea
+Latest main V1.6 merge commit: d3272100fce8546dfcf4a1b434c627317a44ca41
+V1.3 merge baseline: 3241fa84d26da03562907ce7a54c0d1c36ee1ae1
 V1.2 merge baseline: 41b0b81441ae23db031bdcf01fb00568a52af397
 V1.0 software baseline: f6c6b03dc1f8d9f4a1246507bd5ddc07c2db4a28
 
 ## Current handoff status
-V1.3 is merged and CI-verified. V1.4 is the active commissioning branch. Physical hardware, vendor SDK behavior, real AI models, threshold calibration and reject timing are not yet validated.
+V1.6 is merged and CI-verified. V1.7 is the active PLC/reject branch. Physical hardware, vendor SDK behavior, real AI models, threshold calibration and reject timing are not yet validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
@@ -142,8 +173,8 @@ V1.3 is merged and CI-verified. V1.4 is the active commissioning branch. Physica
 
 ## Architecture change record
 DATE: 2026-08-19
-DECISION: Add motion-aware timing, trigger/frame correlation, velocity safety and bounded real-hardware commissioning.
-REASON: Slowly moving products require deterministic proof that the evaluated frame belongs to the correct product, processing completes before the reject window closes, and physical acceptance can be performed safely and observably.
+DECISION: Add motion-aware timing, trigger/frame correlation, velocity safety, bounded real-hardware commissioning, device capability contracts, acquisition/lighting contracts and PLC reject acknowledgement.
+REASON: Slowly moving products require deterministic proof that the evaluated frame belongs to the correct product, processing completes before the reject window closes, and physical acceptance can be performed safely and observably through the full Camera -> AI -> Rule -> PLC/Reject chain.
 ALTERNATIVES: Trust trigger order alone; rejected because buffering, latency, trigger jitter and multiple products can create stale/wrong-frame decisions. Use mock-only acceptance; rejected because it cannot prove physical timing or reject behavior.
-IMPACT: Rule.cmd/InspectionPlan carry motion/correlation parameters; pipeline rejects uncorrelated/unsafe frames; V1.4 provides a bounded field acceptance harness and procedure.
+IMPACT: Rule.cmd/InspectionPlan carry motion/correlation parameters; pipeline rejects uncorrelated/unsafe frames; commissioning gates verify device readiness; acquisition frames are vendor-neutral; physical NG has an explicit PLC acknowledgement contract.
 MIGRATION: Implement vendor adapters, supply real model artifacts, calibrate thresholds, collect line timing, run guarded physical trials and only then enable production mode.
