@@ -4,6 +4,7 @@ from src.integration.plc import Decision, PLCCommand
 from src.integration.timing import TimingBudget, TimingCollector
 from src.machine_vision.camera.base import Frame
 from src.machine_vision.trigger.base import TriggerEvent, TriggerType
+from src.machine_vision.tracking.tracker import ProductTracker
 from src.production_pipeline import ProductionInspectionPipeline
 
 
@@ -83,6 +84,14 @@ def test_mock_hardware_factory_is_replaceable():
     config = __import__("src.rules.parser", fromlist=["parse_rule_file"]).parse_rule_file("config/Rule.cmd").to_plan()
     assert factory.camera(next(iter(config.cameras.values()))).__class__.__name__ == "MockCamera"
     assert factory.trigger(next(iter(config.triggers.values()))).__class__.__name__ == "MockTrigger"
+
+
+def test_product_tracker_calculates_slow_line_velocity():
+    tracker = ProductTracker()
+    tracker.start("P1", "I1", position=0.0, timestamp=10.0)
+    track = tracker.update("P1", position=2.0, timestamp=11.0)
+    assert track.velocity_units_per_s == 2.0
+    assert track.frames_seen == 1
 
 
 def test_hil_runner_passes_reference_scenario(tmp_path):
