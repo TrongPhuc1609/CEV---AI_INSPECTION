@@ -39,8 +39,15 @@ class ProductionInspectionPipeline:
         engine=RuleEngine(config); orchestrator=InspectionOrchestrator(config,engine); plc=plc or MockPLC(); audit=InspectionAuditStore(plan.audit.output_path) if plan.audit.enabled else None
         return cls(acquisition,rois,ProductTracker(),VisionPipeline(adapters),engine,orchestrator,plc,config,audit)
     def run_product(self):
-        acquired=self.acquisition.acquire(); product_id=acquired.trigger.product_id
-        if not product_id: raise RuntimeError("Trigger did not provide product_id")
+        try:
+            acquired=self.acquisition.acquire()
+        except Exception as exc:
+            self.plc.send(PLCCommand(Decision.NG,"UNKNOWN","NO_INSPECTION",["ACQUISITION_ERROR",str(exc)]))
+            return None
+        product_id=acquired.trigger.product_id
+        if not product_id:
+            self.plc.send(PLCCommand(Decision.NG,"UNKNOWN","NO_INSPECTION",["TRIGGER_NO_PRODUCT_ID"]))
+            return None
         inspection=self.orchestrator.start_product(product_id); self.tracker.start(product_id,inspection.inspection_id,acquired.trigger.position)
         for region_id in self.orchestrator.required_regions():
             try:
