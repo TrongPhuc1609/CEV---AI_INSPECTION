@@ -3,6 +3,7 @@ from time import monotonic
 
 from .machine_vision.lighting.controller import LightingProfile
 from .machine_vision.acquisition.service import ImageAcquisition
+from .machine_vision.correlation import TriggerFrameCorrelator
 from .machine_vision.roi.manager import ROI, ROIManager
 from .machine_vision.tracking.tracker import ProductTracker
 from .vision.pipeline.pipeline import VisionPipeline
@@ -23,7 +24,8 @@ from .audit.store import InspectionAuditStore
 
 class ProductionInspectionPipeline:
     def __init__(self, acquisition, roi_manager, tracker, vision, rule_engine,
-                 orchestrator, plc, config=None, audit_store=None, timing=None):
+                 orchestrator, plc, config=None, audit_store=None, timing=None,
+                 correlator=None):
         self.acquisition = acquisition
         self.roi_manager = roi_manager
         self.tracker = tracker
@@ -31,9 +33,10 @@ class ProductionInspectionPipeline:
         self.rule_engine = rule_engine
         self.orchestrator = orchestrator
         self.plc = plc
-        self.config = config or orchestrator.config
+        self.config = config or (orchestrator.config if orchestrator is not None else None)
         self.audit_store = audit_store
         self.timing = timing or TimingCollector()
+        self.correlator = correlator
 
     @classmethod
     def from_rule_file(cls, rule_path, model_registry, plc=None,
@@ -89,8 +92,11 @@ class ProductionInspectionPipeline:
         orchestrator = InspectionOrchestrator(config, engine)
         plc_driver = plc or hardware.plc(plan.plc)
         audit = InspectionAuditStore(plan.audit.output_path) if plan.audit.enabled else None
+        correlator = TriggerFrameCorrelator(plan.correlation.max_timestamp_delta_ms,
+                                            plan.correlation.max_position_delta)
         return cls(acquisition, rois, ProductTracker(), VisionPipeline(adapters), engine,
-                   orchestrator, plc_driver, config, audit, TimingCollector(timing_budget))
+                   orchestrator, plc_driver, config, audit, TimingCollector(timing_budget),
+                   correlator)
 
     def start(self):
         self.acquisition.start()
@@ -105,6 +111,10 @@ class ProductionInspectionPipeline:
             acquisition_start = monotonic()
             acquired = self.acquisition.acquire()
             self.timing.measure("acquisition", acquisition_start, metadata={"frame_id": acquired.frame.frame_id})
+            if self.correlator:
+                correlation = self.correlator.correlate(acquired.trigger, acquired.frame)
+                if not correlation.matched:
+                    raise RuntimeError("FRAME_CORRELATION_ERROR:" + correlation.reason)
         except Exception as exc:
             self.plc.send(PLCCommand(Decision.NG, "UNKNOWN", "NO_INSPECTION", ["ACQUISITION_ERROR", str(exc)]))
             return None
@@ -150,6 +160,10 @@ class ProductionInspectionPipeline:
             acquired = first_acquired if attempt == 1 else self.acquisition.acquire()
             if acquired.trigger.product_id and acquired.trigger.product_id != product_id:
                 raise RuntimeError("TRIGGER_PRODUCT_MISMATCH")
+            if self.correlator:
+                correlation = self.correlator.correlate(acquired.trigger, acquired.frame)
+                if not correlation.matched:
+                    raise RuntimeError("FRAME_CORRELATION_ERROR:" + correlation.reason)
             frame = acquired.frame
             self.tracker.update(product_id, acquired.trigger.position, acquired.trigger.timestamp)
             roi = self.roi_manager.get(region_id)
