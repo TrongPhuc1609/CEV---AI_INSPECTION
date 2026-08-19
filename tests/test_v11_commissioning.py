@@ -8,6 +8,7 @@ def test_commissioning_gate_fails_closed_for_mock_hardware():
 
     assert not report.ready
     assert "CAMERA_DRIVER" in report.blockers
+    assert "TRIGGER_DRIVER" in report.blockers
     assert "PLC_DRIVER" in report.blockers
     assert "MODEL_ARTIFACTS" in report.blockers
     assert any(check.name == "SENSOR_TO_CAMERA_DISTANCE" and not check.blocking for check in report.checks)
