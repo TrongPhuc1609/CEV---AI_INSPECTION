@@ -7,6 +7,7 @@ import uuid
 from ..models.result import Observation, Status
 from ..rules.engine import RuleEngine
 from ..rules.parser import RuleConfig
+from ..config_hash import inspection_plan_hash, rule_config_hash
 
 class InspectionState(str,Enum):
     CREATED="CREATED"; INSPECTING="INSPECTING"; RECHECKING="RECHECKING"; COMPLETED="COMPLETED"; ERROR="ERROR"
@@ -17,7 +18,7 @@ class RegionResult:
     def status(self): return self.final_observation.status if self.final_observation else Status.UNCERTAIN
 @dataclass
 class ProductInspection:
-    product_id:str; inspection_id:str; created_at:str; state:InspectionState=InspectionState.CREATED; regions:Dict[str,RegionResult]=field(default_factory=dict); missing_regions:List[str]=field(default_factory=list)
+    product_id:str; inspection_id:str; created_at:str; state:InspectionState=InspectionState.CREATED; regions:Dict[str,RegionResult]=field(default_factory=dict); missing_regions:List[str]=field(default_factory=list); metadata:Dict[str,str]=field(default_factory=dict)
     def final_status(self):
         if self.missing_regions:return Status.FAIL
         if not self.regions:return Status.UNCERTAIN
@@ -29,7 +30,7 @@ class InspectionOrchestrator:
     def __init__(self,config:RuleConfig,rule_engine:RuleEngine,observation_provider:Optional[Callable]=None): self.config=config; self.rule_engine=rule_engine; self.observation_provider=observation_provider; self.active={}
     def start_product(self,product_id):
         if not product_id: raise ValueError("product_id is required")
-        inspection_id=f"{product_id}-{uuid.uuid4().hex[:8]}"; item=ProductInspection(product_id,inspection_id,datetime.now(timezone.utc).isoformat()); item.state=InspectionState.INSPECTING; self.active[inspection_id]=item; return item
+        inspection_id=f"{product_id}-{uuid.uuid4().hex[:8]}"; plan=self.config.to_plan(); item=ProductInspection(product_id,inspection_id,datetime.now(timezone.utc).isoformat()); item.state=InspectionState.INSPECTING; item.metadata.update({"rule_config_hash":rule_config_hash(self.config),"inspection_plan_hash":inspection_plan_hash(plan),"plan_version":plan.version}); self.active[inspection_id]=item; return item
     def required_regions(self): return self.config.to_plan().required_regions()
     def inspect_region(self,inspection,region_id,observations:Optional[Iterable[Observation]]=None,observation_provider:Optional[Callable[[int],Observation]]=None):
         rule=self.config.region(region_id); rr=inspection.regions.setdefault(region_id,RegionResult(region_id))
