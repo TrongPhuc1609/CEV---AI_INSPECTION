@@ -80,28 +80,36 @@ def main() -> int:
         obs("R01", "DETECTION", confidence=.50, quantity=4),
         obs("R01", "DETECTION", confidence=.95, quantity=4),
     ]
-    product, final = inspect_product(config, recheck)
-    rr = product.regions["R01"]
-    cases.append(("RECHECK_UNCERTAIN_THEN_PASS", product, final, rr.attempts))
+    cases.append(("RECHECK_UNCERTAIN_THEN_PASS", recheck, Status.PASS, {"region": "R01", "attempts": 2}))
 
     missing_region = base_good()
     del missing_region["R04"]
-    product, final = inspect_product(config, missing_region)
-    cases.append(("MISSING_REGION", product, final, product.missing_regions))
+    cases.append(("MISSING_REGION", missing_region, Status.FAIL, {"missing": ["R04"]}))
 
     results = []
     for name, payload, expected, expected_extra in cases:
-        if isinstance(payload, dict):
-            product, actual = inspect_product(config, payload)
-            region_errors = {rid: rr.final_observation.error_code for rid, rr in product.regions.items() if rr.final_observation and rr.final_observation.error_code}
-            passed = actual == expected and (expected_extra is None or expected_extra in region_errors.values())
-            results.append({"case": name, "pass": passed, "final_status": actual.value, "region_errors": region_errors})
-        else:
-            product = payload
-            actual = expected
-            results.append({"case": name, "pass": actual == Status.PASS and expected_extra == 2, "final_status": actual.value, "R01_attempts": expected_extra})
+        product, actual = inspect_product(config, payload)
+        region_errors = {
+            rid: rr.final_observation.error_code
+            for rid, rr in product.regions.items()
+            if rr.final_observation and rr.final_observation.error_code
+        }
+        passed = actual == expected
+        if isinstance(expected_extra, str):
+            passed = passed and expected_extra in region_errors.values()
+        elif isinstance(expected_extra, dict) and "region" in expected_extra:
+            rr = product.regions[expected_extra["region"]]
+            passed = passed and rr.attempts == expected_extra["attempts"] and rr.status == Status.PASS
+        elif isinstance(expected_extra, dict) and "missing" in expected_extra:
+            passed = passed and product.missing_regions == expected_extra["missing"]
+        results.append({
+            "case": name,
+            "pass": passed,
+            "final_status": actual.value,
+            "region_errors": region_errors,
+            "missing_regions": product.missing_regions,
+        })
 
-    # The missing-region case is intentionally FAIL under PRODUCT_DECISION.missing_region_policy=NG.
     for result in results:
         print(json.dumps(result, ensure_ascii=False))
 
