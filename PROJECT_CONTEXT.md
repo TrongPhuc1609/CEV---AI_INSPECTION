@@ -81,7 +81,7 @@ Feature branch -> inspect -> implement -> test -> update context -> commit -> PR
 Repository: TrongPhuc1609/Loc
 Baseline branch: main
 Current development branch: main
-Latest v1.0 software baseline commit: 863efefcb3dbeb204003ebca85c85eacb09fb831
+Latest v1.0 software baseline commit: 2359a5c284260d3d6da8771122e549c46ce718cd
 Latest v0.98 baseline commit: 6a1f7e4b03af2390df68d0c79dc3bb9c3ec5129a
 Latest v0.95 baseline commit: 7c602410761b462468beb20b31a1be327e4edcf1
 Latest verified v0.9 merge commit: b422b9336b863811c1487eeeef5137337845db45
