@@ -1,23 +1,96 @@
 # AI INSPECTION - RULE CONFIGURATION
-# Version: 0.2.0
-# Human-readable shared rule file.
-# Product-specific / inspection-changing values belong here.
+# Version: 1.0.0
+# Product-specific inspection configuration. Never store credentials here.
 
 [PROJECT]
 name=AI_Inspection
-version=0.2.0
+version=1.0.0
 
 [PRODUCT]
 id=PRODUCT_A
 
-[INSPECTION]
-final_decision=ALL_REQUIRED_REGIONS_PASS
-uncertain_policy=RECHECK_THEN_NG
+[CAMERA:CAM01]
+driver=MOCK
+width=1920
+height=1080
+exposure_us=5000
+gain=1.0
+
+[TRIGGER:TRG01]
+type=SENSOR
+timeout_ms=500
+
+[ENCODER:ENC01]
+enabled=false
+units_per_pulse=1.0
+
+[LIGHT:L01]
+mode=STROBE
+intensity=100
+exposure_us=5000
+gain=1.0
+
+[MODEL:M01]
+method=DETECTION
+adapter=DETECTION
+model_path=models/yolo_component.onnx
+threshold=0.85
+
+[MODEL:M02]
+method=DETECTION_CLASSIFICATION
+adapter=DETECTION_CLASSIFICATION
+model_path=models/component_classifier.onnx
+threshold=0.90
+
+[MODEL:M03]
+method=SEGMENTATION
+adapter=SEGMENTATION
+model_path=models/grease_segmentation.onnx
+threshold=0.80
+
+[MODEL:M04]
+method=ANOMALY_DETECTION
+adapter=ANOMALY_DETECTION
+model_path=models/grease_anomaly.onnx
+threshold=0.50
+
+[ROI:R01]
+camera_id=CAM01
+x=100
+y=100
+width=400
+height=300
+
+[ROI:R02]
+camera_id=CAM01
+x=600
+y=100
+width=400
+height=300
+
+[ROI:R03]
+camera_id=CAM01
+x=100
+y=500
+width=500
+height=300
+
+[ROI:R04]
+camera_id=CAM01
+x=700
+y=500
+width=500
+height=300
 
 [REGION:R01]
 name=Component_Count
 method=DETECTION
 enabled=true
+camera_id=CAM01
+trigger_id=TRG01
+light_id=L01
+model_id=M01
+roi_id=R01
 expected_component=BOLT_M6
 expected_quantity=4
 min_confidence=0.85
@@ -27,6 +100,11 @@ position_check=false
 name=Component_Type
 method=DETECTION_CLASSIFICATION
 enabled=true
+camera_id=CAM01
+trigger_id=TRG01
+light_id=L01
+model_id=M02
+roi_id=R02
 expected_component=BOLT_M8
 expected_quantity=2
 min_confidence=0.90
@@ -37,20 +115,31 @@ position_tolerance_px=15
 name=Grease_Presence
 method=SEGMENTATION
 enabled=true
+camera_id=CAM01
+trigger_id=TRG01
+light_id=L01
+model_id=M03
+roi_id=R03
 grease_required=true
 min_confidence=0.80
 min_coverage_percent=60
 max_coverage_percent=100
-roi_only=true
 
 [REGION:R04]
 name=Grease_Zone
 method=SEGMENTATION
 enabled=true
+camera_id=CAM01
+trigger_id=TRG01
+light_id=L01
+model_id=M03
+roi_id=R04
 grease_required=true
 min_confidence=0.80
 min_coverage_percent=50
+max_coverage_percent=100
 forbidden_zone_check=true
+target_zone_min_percent=50
 
 [RECHECK]
 enabled=true
@@ -58,7 +147,24 @@ max_attempts=2
 min_confidence=0.70
 multi_frame=true
 
-[OUTPUT]
+[PRODUCT_DECISION]
+final_decision=ALL_REQUIRED_REGIONS_PASS
+uncertain_policy=RECHECK_THEN_NG
+missing_region_policy=NG
+
+[PLC:PLC01]
+id=PLC01
+driver=MOCK
+
+[PLC_REJECT]
+enabled=true
+output=REJECT
+
+[EVIDENCE]
 save_evidence_image=true
 save_raw_result=true
 save_final_result=true
+
+[AUDIT]
+enabled=true
+output_path=artifacts/audit
