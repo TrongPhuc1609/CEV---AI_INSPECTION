@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 
+from .integration.commissioning import PhysicalCommissioningGate
 from .integration.release_gate import ProductionReleaseGate
 from .models.result import Status
 from .production_pipeline import ProductionInspectionPipeline
@@ -35,9 +36,11 @@ def demo_models():
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="ai-inspection")
     parser.add_argument("--rule", default="config/Rule.cmd")
+    parser.add_argument("--model-root", default=".")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate-rule")
     sub.add_parser("release-gate")
+    sub.add_parser("commissioning-report")
     sub.add_parser("simulate")
     replay = sub.add_parser("replay")
     replay.add_argument("observations")
@@ -53,6 +56,10 @@ def main(argv=None):
         result = ProductionReleaseGate().validate(plan, real_hardware=True, require_models=True)
         print(json.dumps({"ready": result.ready, "errors": list(result.errors)}, indent=2))
         return 0 if result.ready else 2
+    if args.command == "commissioning-report":
+        report = PhysicalCommissioningGate().evaluate(plan, model_root=args.model_root, require_real_hardware=True)
+        print(json.dumps(report.as_dict(), indent=2))
+        return 0 if report.ready else 2
     if args.command == "simulate":
         pipeline = ProductionInspectionPipeline.from_rule_file(args.rule, demo_models())
         inspection = pipeline.run_product()
