@@ -29,30 +29,27 @@ v0.3 Inspection Orchestrator: COMPLETE.
 v0.4 AI Vision Adapter Layer: COMPLETE / architecture baseline.
 v0.5 Machine Vision Layer: COMPLETE / architecture baseline; real hardware is not physically validated.
 v0.6 Rule.cmd v1.0 + typed InspectionPlan: COMPLETE in software/mock scope.
-v0.9 Runtime stabilization: COMPLETE in software/mock scope; physical hardware and real AI models remain unvalidated.
+v0.9 Runtime stabilization: COMPLETE in software/mock scope.
+v0.95 Commissioning framework: COMPLETE in software/mock scope; vendor SDKs and physical line remain unvalidated.
 
-## v0.9 verified acceptance
-- Rule.cmd v1.0 exists and is human-readable.
-- Parser compiles typed Camera/Trigger/Encoder/Lighting/Model/ROI/Recheck/Region/ProductDecision/PLC/Evidence/Audit config.
-- InspectionPlan validates cross-references and configured component positions.
-- Production pipeline can be constructed from Rule.cmd.
-- Detection preserves class counts so extra/wrong components cannot be hidden by a dominant class.
-- Recheck requests a new acquisition/observation for each attempt.
-- Missing required regions and final UNCERTAIN are fail-safe NG.
-- Camera/trigger startup errors fail safe to PLC NG when no product identity is available.
-- Grease coverage and forbidden/target-zone checks are deterministic when model evidence is supplied.
-- Anomaly method is supported by Rule Engine.
-- Final product decision is sent to PLC and audit JSON is written when enabled.
-- Automated tests pass: 15 passed in the development environment.
+## v0.95 verified software acceptance
+- Vendor-neutral CallbackCamera, CallbackTrigger and CallbackPLC adapters exist.
+- HardwareFactory is an explicit injection boundary; MockHardwareFactory remains the reference simulator.
+- ImageAcquisition has explicit start/stop lifecycle and refuses capture before start.
+- Production pipeline auto-starts acquisition when run_product() is called and supports explicit start/stop for long-running services.
+- TimingCollector records acquisition, AI, decision and PLC latency and evaluates configurable budgets.
+- HILRunner executes deterministic commissioning scenarios against injected hardware/model doubles.
+- Existing Rule.cmd remains the source of product configuration; no credentials are stored in it.
+- Automated v0.95 tests cover lifecycle, adapter contracts, timing budgets and HIL nominal PASS.
 
 ## Current next task
-V0.95 Hardware Integration:
-1. Replace MockCamera/MockTrigger/MockPLC with validated vendor adapters.
-2. Implement real product-ID handoff and encoder tracking.
-3. Validate lighting profiles and camera exposure/gain on the line.
-4. Measure sensor-to-camera distance, conveyor speed, processing latency, PLC latency and reject-actuator latency.
-5. Commission real AI models and calibrate confidence/coverage/anomaly thresholds.
-6. Add hardware-in-the-loop tests before production release.
+V0.98 AI/model commissioning software:
+1. Add model registry metadata and model lifecycle validation (path, checksum, version, class map).
+2. Add threshold/calibration profiles without hard-coding product rules.
+3. Add deterministic replay from saved frames/observations for offline calibration.
+4. Add performance aggregation (latency percentiles, confidence/coverage distributions).
+5. Add production release gate that refuses real mode when model/config validation is incomplete.
+6. Expand HIL scenarios for PASS, missing, extra, wrong type, grease failures, recheck and hardware faults.
 
 ## Inspection logic
 Missing/extra: YOLO or RT-DETR detection + expected class/quantity/tolerance.
@@ -80,11 +77,11 @@ Feature branch -> inspect -> implement -> test -> update context -> commit -> PR
 ## Git baseline
 Repository: TrongPhuc1609/Loc
 Baseline branch: main
-Current development branch: main
+Current development branch: feature/v0.95-hardware-integration
 Latest verified v0.9 merge commit: b422b9336b863811c1487eeeef5137337845db45
 
 ## Current handoff status
-v0.9 software stabilization is merged into main. Local verification in the development environment: 15 tests passed. The implementation is mock/simulation validated; physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
+V0.95 commissioning framework is implemented on feature/v0.95-hardware-integration. Automated tests are expected to cover the new framework. This is software/simulation validation only; physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
@@ -92,12 +89,12 @@ v0.9 software stabilization is merged into main. Local verification in the devel
 - Rule thresholds are examples until calibrated on the production line.
 - PLC reject timing and fail-safe electrical behavior require hardware validation.
 - Evidence currently persists normalized audit JSON; raw image persistence is adapter/application dependent.
-- No claim of production readiness is allowed until V0.95/V0.98 gates pass.
+- No claim of production readiness is allowed until V0.98 model/config gates and hardware commissioning pass.
 
 ## Architecture change record
 DATE: 2026-08-19
-DECISION: Make Rule.cmd compile into a typed InspectionPlan and drive the reference runtime; make recheck acquire a new frame; make errors/missing regions fail-safe; make component position checks fully configurable.
-REASON: Close the v0.9 gaps between configuration, runtime, deterministic decision logic and auditability.
-ALTERNATIVES: Keep hard-coded runtime wiring; rejected because product-specific changes would require code changes and could drift from Rule.cmd.
-IMPACT: Adds typed plan models, config-driven factory, durable audit JSON, expanded rule handling and runtime tests.
-MIGRATION: Existing RuleConfig API remains compatible; use RuleConfig.to_plan()/build_inspection_plan() for new integrations.
+DECISION: Add vendor-neutral hardware injection, acquisition lifecycle enforcement, timing instrumentation and deterministic HIL scenarios.
+REASON: Establish a software commissioning boundary before physical camera/PLC/lighting integration.
+ALTERNATIVES: Bind the core directly to a vendor SDK; rejected because vendor changes would contaminate the inspection core.
+IMPACT: Hardware SDKs can be wrapped by Callback* adapters or a HardwareFactory without changing Rule Engine/Orchestrator logic.
+MIGRATION: Use ProductionInspectionPipeline.from_rule_file(..., hardware_factory=...) for real adapters; keep MockHardwareFactory for CI.
