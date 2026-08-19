@@ -14,7 +14,7 @@ from .rules.engine import RuleEngine
 from .rules.parser import parse_rule_file
 from .orchestrator.orchestrator import InspectionOrchestrator
 from .models.result import Status, Observation
-from .integration.plc import PLCCommand, Decision, PLCInterface
+from .integration.plc import PLCCommand, Decision
 from .integration.hardware_adapters import HardwareFactory, MockHardwareFactory
 from .integration.timing import TimingBudget, TimingCollector
 from .audit.store import InspectionAuditStore
@@ -22,8 +22,7 @@ from .audit.store import InspectionAuditStore
 
 class ProductionInspectionPipeline:
     def __init__(self, acquisition, roi_manager, tracker, vision, rule_engine,
-                 orchestrator, plc, config=None, audit_store=None,
-                 timing=None):
+                 orchestrator, plc, config=None, audit_store=None, timing=None):
         self.acquisition = acquisition
         self.roi_manager = roi_manager
         self.tracker = tracker
@@ -34,10 +33,10 @@ class ProductionInspectionPipeline:
         self.config = config or orchestrator.config
         self.audit_store = audit_store
         self.timing = timing or TimingCollector()
-        self.acquisition.on_timing = self._record_timing
 
     @classmethod
-    def from_rule_file(cls, rule_path, model_registry, plc=None, hardware_factory: HardwareFactory | None = None,
+    def from_rule_file(cls, rule_path, model_registry, plc=None,
+                       hardware_factory: HardwareFactory | None = None,
                        timing_budget: TimingBudget | None = None):
         config = parse_rule_file(rule_path)
         plan = config.to_plan()
@@ -91,9 +90,6 @@ class ProductionInspectionPipeline:
 
     def stop(self):
         self.acquisition.stop()
-
-    def _record_timing(self, name: str, elapsed_ms: float):
-        self.timing.samples.append(__import__("src.integration.timing", fromlist=["TimingSample"]).TimingSample(name, elapsed_ms))
 
     def run_product(self):
         if not self.acquisition.started:
