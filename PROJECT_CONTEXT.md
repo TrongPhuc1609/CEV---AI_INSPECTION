@@ -32,7 +32,8 @@ v0.6 Rule.cmd v1.0 + typed InspectionPlan: COMPLETE in software/mock scope.
 v0.9 Runtime stabilization: COMPLETE in software/mock scope.
 v0.95 Commissioning framework: COMPLETE in software/mock scope.
 v0.98 Model/config commissioning framework: COMPLETE in software/mock scope.
-v1.0 Software Release: COMPLETE in software/simulation scope; physical commissioning is a separate gate.
+v1.0 Software Release: VERIFIED in software/simulation scope; GitHub Actions CI is green on the current main baseline.
+v1.1 Physical Commissioning Gate: IN PROGRESS on feature/v1.1-commissioning-framework.
 
 ## v1.0 software acceptance
 - Single CLI supports `validate-rule`, `simulate`, `replay` and `release-gate`.
@@ -42,17 +43,25 @@ v1.0 Software Release: COMPLETE in software/simulation scope; physical commissio
 - Software release boundary is documented in SOFTWARE_RELEASE.md.
 - Production mode is fail-closed until real camera/PLC adapters, model artifacts and commissioning evidence are present.
 
+## V1.1 commissioning acceptance
+- `PhysicalCommissioningGate` explicitly reports blocking configuration/artifact gates and non-blocking field measurements.
+- `commissioning-report` CLI exits 0 only when software/configuration/artifact gates are sufficient to start physical commissioning; otherwise exits 2.
+- Real camera, trigger, PLC and required model artifacts are mandatory for physical readiness.
+- Audit, multi-frame recheck and PLC reject must be enabled.
+- Sensor-to-camera distance, conveyor velocity, acquisition/AI/PLC/reject latency remain explicit field measurements and cannot be inferred from software.
+- V1.1 is not complete until HIL and line-trial evidence is recorded.
+
 ## Current next task
-PHYSICAL COMMISSIONING / V1.0-HARDWARE:
+V1.1 PHYSICAL COMMISSIONING:
 1. Select and implement vendor camera adapter(s) behind `Camera`/`CallbackCamera`.
 2. Select trigger/encoder interface and implement real product-ID handoff.
 3. Select lighting controller and validate exposure/gain/strobe timing.
 4. Implement vendor PLC adapter and reject output handshake.
 5. Supply real AI model artifacts and record model version/SHA-256/class map in Rule.cmd.
 6. Calibrate confidence, quantity, position, grease coverage/zone and anomaly thresholds on representative good/NG samples.
-7. Measure sensor-to-camera distance, conveyor velocity, acquisition/AI/decision/PLC/actuator latency.
-8. Run HIL and then line trials; document false-pass/false-reject and recheck behavior.
-9. Only after all gates pass, remove MOCK drivers and enable production_mode.
+7. Record sensor-to-camera distance, conveyor velocity, acquisition/AI/decision/PLC/actuator latency.
+8. Run deterministic HIL scenarios, then line trials; document false-pass/false-reject and recheck behavior.
+9. Only after all gates pass, remove MOCK drivers and enable `production_mode`.
 
 ## Inspection logic
 Missing/extra: YOLO or RT-DETR detection + expected class/quantity/tolerance.
@@ -80,14 +89,14 @@ Feature branch -> inspect -> implement -> test -> update context -> commit -> PR
 ## Git baseline
 Repository: TrongPhuc1609/Loc
 Baseline branch: main
-Current development branch: main
-Latest v1.0 software baseline commit: 2359a5c284260d3d6da8771122e549c46ce718cd
+Current development branch: feature/v1.1-commissioning-framework
+Latest main v1.0 software baseline commit: f6c6b03dc1f8d9f4a1246507bd5ddc07c2db4a28
 Latest v0.98 baseline commit: 6a1f7e4b03af2390df68d0c79dc3bb9c3ec5129a
 Latest v0.95 baseline commit: 7c602410761b462468beb20b31a1be327e4edcf1
 Latest verified v0.9 merge commit: b422b9336b863811c1487eeeef5137337845db45
 
 ## Current handoff status
-V1.0 software release hardening is implemented on main. The architecture, configuration, simulation, replay, release gating and operational service loop are software-defined. Physical hardware, vendor SDK behavior, real AI models, threshold calibration and reject timing are not validated.
+V1.0 software release is verified in software/simulation scope. V1.1 adds an explicit physical commissioning gate and CLI report. The architecture, configuration, simulation, replay, release gating, operational service loop and commissioning checklist are software-defined. Physical hardware, vendor SDK behavior, real AI models, threshold calibration and reject timing are not validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
@@ -95,13 +104,13 @@ V1.0 software release hardening is implemented on main. The architecture, config
 - Rule thresholds are examples until calibrated on the production line.
 - PLC reject timing and fail-safe electrical behavior require hardware validation.
 - Evidence currently persists normalized audit JSON; raw image persistence is adapter/application dependent.
-- GitHub Actions must be green before declaring the software release CI-verified.
 - No claim of production readiness is allowed until physical commissioning gates pass.
+- Field timing measurements are intentionally warnings in the commissioning report until recorded.
 
 ## Architecture change record
 DATE: 2026-08-19
-DECISION: Complete software release hardening with CLI, deterministic configuration identity, continuous service lifecycle and CI quality gates; keep physical commissioning separate.
-REASON: Establish a stable software release that can be safely connected to real camera/lighting/trigger/PLC/AI adapters without redesigning the core.
-ALTERNATIVES: Continue adding features without a release boundary; rejected because hardware commissioning requires a stable and auditable software baseline.
-IMPACT: Software baseline is now suitable for hardware commissioning; production mode remains fail-closed.
-MIGRATION: Implement vendor adapters through HardwareFactory and provide real model metadata before enabling production_mode.
+DECISION: Add an explicit PhysicalCommissioningGate and commissioning-report CLI while preserving the fail-closed production boundary.
+REASON: Make the transition from verified software to real hardware auditable and prevent mock/simulation success from being mistaken for physical readiness.
+ALTERNATIVES: Treat V1.0 software CI as production acceptance; rejected because camera, lighting, conveyor, PLC, AI calibration and reject timing require physical evidence.
+IMPACT: V1.1 now has a machine-readable readiness report and explicit field-measurement checklist.
+MIGRATION: Implement vendor adapters through HardwareFactory, install real model artifacts, record calibration/timing evidence, pass HIL and line trial, then enable production_mode.
