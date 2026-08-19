@@ -14,6 +14,7 @@ exposure_us=5000
 gain=1.0
 [TRIGGER:TRG01]
 type=SENSOR
+driver=MOCK
 timeout_ms=500
 [ENCODER:ENC01]
 enabled=false
