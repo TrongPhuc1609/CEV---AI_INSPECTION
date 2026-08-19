@@ -33,7 +33,7 @@ class ProductionInspectionPipeline:
         self.rule_engine = rule_engine
         self.orchestrator = orchestrator
         self.plc = plc
-        self.config = config or orchestrator.config
+        self.config = config or (orchestrator.config if orchestrator is not None else None)
         self.audit_store = audit_store
         self.timing = timing or TimingCollector()
         self.correlator = correlator
