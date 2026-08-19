@@ -36,7 +36,7 @@ v0.95 Commissioning framework: COMPLETE in software/mock scope.
 v0.98 Model/config commissioning framework: COMPLETE in software/mock scope.
 v1.0 Software Release: VERIFIED in software/simulation scope; GitHub Actions CI is green on the main baseline.
 v1.1 Physical Commissioning Gate: COMPLETE in software/mock scope; merged after CI verification.
-v1.2 Motion/Timing/Frame Correlation: IN PROGRESS.
+v1.2 Motion/Timing/Frame Correlation: IMPLEMENTED on feature branch; awaiting CI and merge.
 
 ## V1.0 software acceptance
 - Single CLI supports `validate-rule`, `simulate`, `replay` and `release-gate`.
@@ -59,15 +59,15 @@ v1.2 Motion/Timing/Frame Correlation: IN PROGRESS.
 - `[CORRELATION]` is parsed into typed `CorrelationConfig`.
 - `MotionTimingPlanner` calculates trigger-to-camera travel, processing budget and camera-to-reject window.
 - `TriggerFrameCorrelator` rejects wrong-product, stale-frame and configured position-mismatch cases.
-- Timing and correlation are vendor-neutral and independently unit tested.
-- The correlation result must be integrated into the production acquisition/orchestrator error path before physical production use.
+- `ProductionInspectionPipeline` invokes correlation before Vision/Rule processing and converts correlation failure to fail-safe NG.
+- Timing and correlation are vendor-neutral and unit tested.
 
 ## Current next task
 V1.2 CONTINUE:
-1. Integrate `TriggerFrameCorrelator` into `ImageAcquisition`/`ProductionInspectionPipeline` so an uncorrelated frame cannot enter Vision/Rule processing.
-2. Add motion-aware ProductTracker constraints and velocity range monitoring.
-3. Add acquisition timing records to the normalized inspection/audit result.
-4. Add HIL scenarios for trigger jitter, stale frame, wrong product frame, slow/fast velocity and reject-window exhaustion.
+1. Add motion-aware ProductTracker constraints and velocity range monitoring.
+2. Add acquisition/correlation timing records to the normalized inspection/audit result.
+3. Add HIL scenarios for trigger jitter, stale frame, wrong product frame, slow/fast velocity and reject-window exhaustion.
+4. Add a commissioning CLI/report section for the calculated timing budget without treating calculated values as physical evidence.
 5. Keep real camera/trigger/encoder/lighting/PLC vendor adapters behind interfaces.
 
 After V1.2 software acceptance:
@@ -113,7 +113,7 @@ Latest v0.98 baseline commit: 6a1f7e4b03af2390df68d0c79dc3bb9c3ec5129a
 Latest v0.95 baseline commit: 7c602410761b462468beb20b31a1be327e4edcf1
 
 ## Current handoff status
-V1.1 physical commissioning gate is merged and CI-verified in software scope. V1.2 adds motion-aware timing and trigger/frame correlation. Physical hardware, vendor SDK behavior, real AI models, threshold calibration and reject timing are not validated.
+V1.1 physical commissioning gate is merged and CI-verified in software scope. V1.2 motion/timing/correlation is implemented on a feature branch; physical hardware, vendor SDK behavior, real AI models, threshold calibration and reject timing are not validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
@@ -121,8 +121,7 @@ V1.1 physical commissioning gate is merged and CI-verified in software scope. V1
 - Rule thresholds are examples until calibrated on the production line.
 - PLC reject timing and fail-safe electrical behavior require hardware validation.
 - Evidence currently persists normalized audit JSON; raw image persistence is adapter/application dependent.
-- Correlation is currently a standalone validated primitive and must be wired into the live production pipeline before production use.
-- Field timing measurements are commissioning inputs and cannot be inferred from mock execution.
+- Physical timing measurements are commissioning inputs and cannot be inferred from mock execution.
 - No claim of production readiness is allowed until physical commissioning gates pass.
 
 ## Architecture change record
@@ -130,5 +129,5 @@ DATE: 2026-08-19
 DECISION: Add V1.2 motion-aware timing and trigger/frame product correlation.
 REASON: A slowly moving product requires deterministic proof that the evaluated frame belongs to the correct product and that processing completes before the reject window closes.
 ALTERNATIVES: Trust trigger order alone; rejected because buffering, latency, trigger jitter and multiple products can create stale/wrong-frame decisions.
-IMPACT: Rule.cmd and InspectionPlan now carry motion/correlation parameters; timing/correlation are independently testable and vendor-neutral.
-MIGRATION: Integrate the correlator into acquisition/orchestrator, then collect real line timing measurements and validate HIL/line trials.
+IMPACT: Rule.cmd and InspectionPlan now carry motion/correlation parameters; the live production pipeline now rejects uncorrelated frames before Vision/Rule processing.
+MIGRATION: Add velocity monitoring, timing audit/HIL coverage, then collect real line timing measurements and validate HIL/line trials.
