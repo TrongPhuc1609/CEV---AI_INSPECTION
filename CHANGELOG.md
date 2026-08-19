@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.95.0
+- Vendor-neutral `CallbackCamera`, `CallbackTrigger` and `CallbackPLC` adapters
+- Injectable `HardwareFactory` boundary with `MockHardwareFactory` reference implementation
+- Explicit acquisition start/stop lifecycle and pre-start capture protection
+- Commissioning `TimingBudget` and `TimingCollector` for acquisition, AI, decision and PLC latency
+- Deterministic `HILRunner` for reusable hardware/model commissioning scenarios
+- Production pipeline supports injected hardware and automatic acquisition startup
+- Automated tests for hardware adapter contracts, lifecycle, timing budget and HIL nominal PASS
+- Scope remains software/simulation validated; physical vendor SDKs and line timing are commissioning gates
+
 ## v0.9.0
 - Rule.cmd v1.0 configuration schema
 - Typed `InspectionPlan` with cross-reference and position validation
