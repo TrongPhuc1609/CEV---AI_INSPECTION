@@ -25,8 +25,10 @@ V1.0 is the verified software/simulation baseline. V1.1 defines the controlled t
 
 ## CLI
 
+Global options must precede the subcommand:
+
 ```bash
-python -m src.cli commissioning-report --rule config/Rule.cmd --model-root .
+python -m src.cli --rule config/Rule.cmd --model-root . commissioning-report
 ```
 
 Exit code `0` means the software configuration/artifacts are sufficient to start physical commissioning. Exit code `2` means at least one blocking gate remains open.
