@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.98.0
+- Model manifest registry with version, checksum, class-map and threshold metadata sourced from Rule.cmd
+- Production release gate that fails closed when real hardware/models are uncommissioned
+- Deterministic calibration registry derived from typed InspectionPlan
+- Offline observation replay for deterministic rule/calibration verification
+- Latency/confidence/coverage performance aggregation with percentile metrics
+- Rule.cmd now records explicit uncommissioned model metadata placeholders
+- Automated tests cover model validation, release gating, replay, calibration and performance metrics
+- Scope remains software/commissioning validated; real model artifacts and physical line validation remain required
+
 ## v0.95.0
 - Vendor-neutral `CallbackCamera`, `CallbackTrigger` and `CallbackPLC` adapters
 - Injectable `HardwareFactory` boundary with `MockHardwareFactory` reference implementation
