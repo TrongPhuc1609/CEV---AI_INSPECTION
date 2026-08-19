@@ -61,8 +61,8 @@ class ModelRegistry:
                         errors.append("MODEL_CHECKSUM_MISMATCH")
                 else:
                     errors.append("MODEL_CHECKSUM_MISSING")
-            if require_artifact and not manifest.version:
-                errors.append("MODEL_VERSION_MISSING")
+            if require_artifact and (not manifest.version or str(manifest.version).upper() in {"UNCOMMISSIONED", "PLACEHOLDER"}):
+                errors.append("MODEL_VERSION_MISSING_OR_UNCOMMISSIONED")
             if require_artifact and not manifest.class_map:
                 errors.append("MODEL_CLASS_MAP_MISSING")
             if manifest.threshold is None:
