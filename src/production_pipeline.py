@@ -17,6 +17,7 @@ from .models.result import Status, Observation
 from .integration.plc import PLCCommand, Decision
 from .integration.hardware_adapters import HardwareFactory, MockHardwareFactory
 from .integration.timing import TimingBudget, TimingCollector
+from .integration.release_gate import ProductionReleaseGate
 from .audit.store import InspectionAuditStore
 
 
@@ -37,11 +38,16 @@ class ProductionInspectionPipeline:
     @classmethod
     def from_rule_file(cls, rule_path, model_registry, plc=None,
                        hardware_factory: HardwareFactory | None = None,
-                       timing_budget: TimingBudget | None = None):
+                       timing_budget: TimingBudget | None = None,
+                       production_mode: bool = False, model_root: str = "."):
         config = parse_rule_file(rule_path)
         plan = config.to_plan()
         if not plan.cameras or not plan.triggers:
             raise ValueError("Rule.cmd must define at least one camera and trigger")
+        if production_mode:
+            gate = ProductionReleaseGate().validate(plan, model_root=model_root, real_hardware=True, require_models=True)
+            if not gate.ready:
+                raise RuntimeError("Production release gate failed: " + "; ".join(gate.errors))
 
         hardware = hardware_factory or MockHardwareFactory()
         camera_cfg = next(iter(plan.cameras.values()))
