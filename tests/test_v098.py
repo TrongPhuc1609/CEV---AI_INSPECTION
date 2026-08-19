@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from src.integration.release_gate import ProductionReleaseGate
 from src.models.calibration import CalibrationRegistry
 from src.models.registry import ModelRegistry
@@ -8,6 +10,7 @@ from src.replay import ObservationReplay
 from src.models.result import Observation, Status
 from src.rules.parser import parse_rule_file
 from src.rules.engine import RuleEngine
+from src.production_pipeline import ProductionInspectionPipeline
 
 
 def test_model_registry_reads_rule_metadata_and_fails_closed_for_real_release():
@@ -53,3 +56,11 @@ def test_performance_metrics_percentiles():
     assert summary["latency_ms"]["p95"] == 50
     assert summary["confidence"]["count"] == 3
     assert summary["coverage_percent"]["mean"] == 75
+
+
+def test_production_pipeline_refuses_uncommissioned_models():
+    with pytest.raises(RuntimeError, match="Production release gate failed"):
+        ProductionInspectionPipeline.from_rule_file(
+            "config/Rule.cmd", {"M01": object(), "M02": object(), "M03": object(), "M04": object()},
+            production_mode=True,
+        )
