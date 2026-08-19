@@ -80,10 +80,11 @@ Feature branch -> inspect -> implement -> test -> update context -> commit -> PR
 ## Git baseline
 Repository: TrongPhuc1609/Loc
 Baseline branch: main
-Current development branch: feature/v0.9-completion
+Current development branch: main
+Latest verified v0.9 merge commit: b422b9336b863811c1487eeeef5137337845db45
 
 ## Current handoff status
-v0.9 software stabilization is implemented on feature/v0.9-completion. Local verification in the development environment: 15 tests passed. The implementation is mock/simulation validated; physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
+v0.9 software stabilization is merged into main. Local verification in the development environment: 15 tests passed. The implementation is mock/simulation validated; physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
