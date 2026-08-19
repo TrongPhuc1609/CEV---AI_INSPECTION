@@ -1,3 +1,4 @@
+from src.cli import main
 from src.integration.commissioning import PhysicalCommissioningGate
 from src.rules.parser import parse_rule_file
 
@@ -28,6 +29,10 @@ def test_commissioning_gate_can_validate_software_only_profile():
         "PLC_LATENCY",
         "REJECT_ACTUATOR_LATENCY",
     }
+
+
+def test_commissioning_report_cli_fails_closed():
+    assert main(["commissioning-report"]) == 2
 
 
 def test_report_is_serializable():
