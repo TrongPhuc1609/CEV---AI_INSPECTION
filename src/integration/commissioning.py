@@ -49,11 +49,7 @@ class CommissioningReport:
 
 
 class PhysicalCommissioningGate:
-    """Gate that must pass before a real line may be enabled.
-
-    ``require_real_hardware`` and ``model_root`` are explicit inputs so this
-    check can run in CI and on a commissioning laptop without hidden state.
-    """
+    """Gate that must pass before a real line may be enabled."""
 
     def evaluate(self, plan, model_root: str = ".", require_real_hardware: bool = True) -> CommissioningReport:
         checks: list[CommissioningCheck] = []
@@ -64,10 +60,10 @@ class PhysicalCommissioningGate:
         except ValueError as exc:
             checks.append(CommissioningCheck("RULE_PLAN_VALID", False, details=str(exc)))
 
-        # CameraConfig has an explicit driver. TriggerConfig intentionally does
-        # not: its physical adapter is identified through settings.driver.
         camera_drivers = [str(cfg.driver).upper() for cfg in plan.cameras.values()]
-        camera_ok = bool(camera_drivers) and (not require_real_hardware or all(driver != "MOCK" for driver in camera_drivers))
+        camera_ok = bool(camera_drivers) and (
+            not require_real_hardware or all(driver != "MOCK" for driver in camera_drivers)
+        )
         checks.append(CommissioningCheck(
             "CAMERA_DRIVER",
             camera_ok,
@@ -77,8 +73,7 @@ class PhysicalCommissioningGate:
 
         trigger_drivers = [str(cfg.settings.get("driver", "")).upper() for cfg in plan.triggers.values()]
         trigger_ok = bool(trigger_drivers) and (
-            not require_real_hardware
-            or all(driver and driver != "MOCK" for driver in trigger_drivers)
+            not require_real_hardware or all(driver and driver != "MOCK" for driver in trigger_drivers)
         )
         checks.append(CommissioningCheck(
             "TRIGGER_DRIVER",
@@ -88,20 +83,32 @@ class PhysicalCommissioningGate:
         ))
 
         plc_driver = str(plan.plc.driver).upper()
+        plc_ok = bool(plc_driver) and (not require_real_hardware or plc_driver != "MOCK")
         checks.append(CommissioningCheck(
             "PLC_DRIVER",
-            not require_real_hardware or plc_driver != "MOCK",
-            details=f"driver={plc_driver}" + ("" if not require_real_hardware or plc_driver != "MOCK" else "; real driver required"),
+            plc_ok,
+            details=f"driver={plc_driver or '<missing>'}"
+            + ("; real driver required" if require_real_hardware and not plc_ok else ""),
         ))
 
-        if plan.lights:
-            checks.append(CommissioningCheck("LIGHTING_CONFIG", True, details=f"{len(plan.lights)} lighting profile(s) configured"))
-        else:
-            checks.append(CommissioningCheck("LIGHTING_CONFIG", False, details="no lighting profile configured"))
+        lighting_ok = bool(plan.lights)
+        checks.append(CommissioningCheck(
+            "LIGHTING_CONFIG",
+            lighting_ok,
+            details=f"{len(plan.lights)} lighting profile(s) configured"
+            if lighting_ok else "no lighting profile configured",
+        ))
 
         registry = ModelRegistry.from_plan(plan)
-        model_results = registry.validate(model_root, require_artifact=require_real_hardware)
-        model_errors = [f"{result.model_id}: {error}" for result in model_results for error in result.errors]
+        if not registry.manifests:
+            model_errors = ["MODEL_CONFIGURATION_MISSING"]
+        else:
+            model_results = registry.validate(model_root, require_artifact=require_real_hardware)
+            model_errors = [
+                f"{result.model_id}: {error}"
+                for result in model_results
+                for error in result.errors
+            ]
         checks.append(CommissioningCheck(
             "MODEL_ARTIFACTS",
             not model_errors,
@@ -113,10 +120,11 @@ class PhysicalCommissioningGate:
             bool(plan.audit.enabled),
             details="audit persistence enabled" if plan.audit.enabled else "physical commissioning requires audit persistence",
         ))
+        recheck_ok = bool(plan.recheck.enabled and plan.recheck.max_attempts >= 2 and plan.recheck.multi_frame)
         checks.append(CommissioningCheck(
             "RECHECK_POLICY",
-            bool(plan.recheck.enabled and plan.recheck.max_attempts >= 2 and plan.recheck.multi_frame),
-            details="multi-frame recheck configured" if plan.recheck.enabled and plan.recheck.max_attempts >= 2 and plan.recheck.multi_frame else "multi-frame recheck is required",
+            recheck_ok,
+            details="multi-frame recheck configured" if recheck_ok else "multi-frame recheck is required",
         ))
         checks.append(CommissioningCheck(
             "PLC_REJECT",
