@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.0.0-software
+- Single CLI entry point for Rule.cmd validation, simulation, replay and production release gating
+- Deterministic rule-config and inspection-plan hashes persisted with every inspection
+- Graceful continuous inspection service loop with bounded test mode and shutdown support
+- CI now runs Python compile checks, Rule.cmd validation and the complete pytest suite
+- Documented software release boundary and explicit hardware commissioning gates
+- Production mode is fail-closed until real camera/PLC adapters and commissioned model artifacts are supplied
+
 ## v0.98.0
 - Model manifest registry with version, checksum, class-map and threshold metadata sourced from Rule.cmd
 - Production release gate that fails closed when real hardware/models are uncommissioned
