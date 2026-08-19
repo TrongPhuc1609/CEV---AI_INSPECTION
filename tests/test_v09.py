@@ -7,16 +7,17 @@ from src.integration.plc import MockPLC, Decision
 
 def _cfg(): return parse_rule_file("config/Rule.cmd")
 def _det_obs(region="R01",confidence=.95,counts=None,cls="BOLT_M6",qty=4):
-    counts=counts or {cls:qty}
-    return Observation("P","I",region,"DETECTION",detected_class=cls,confidence=confidence,quantity=qty,metadata={"class_counts":counts})
+    counts=counts or {cls:qty}; return Observation("P","I",region,"DETECTION",detected_class=cls,confidence=confidence,quantity=qty,metadata={"class_counts":counts})
 def test_rule_cmd_compiles_to_valid_typed_plan():
-    plan=_cfg().to_plan(); assert plan.version=="1.0.0"; assert set(plan.required_regions())=={"R01","R02","R03","R04"}; assert plan.regions["R01"].model_id=="M01"; assert plan.rois["R04"].camera_id=="CAM01"
+    plan=_cfg().to_plan(); assert plan.version=="1.0.0"; assert set(plan.required_regions())=={"R01","R02","R03","R04"}; assert plan.regions["R01"].model_id=="M01"; assert plan.regions["R02"].expected_position_x==200; assert plan.rois["R04"].camera_id=="CAM01"
 def test_extra_component_is_ng_even_when_expected_count_is_correct():
     result=RuleEngine(_cfg()).evaluate(_det_obs(counts={"BOLT_M6":4,"BOLT_M8":1})); assert result.status==Status.FAIL; assert result.error_code=="EXTRA_COMPONENT"
 def test_missing_component_is_ng():
     result=RuleEngine(_cfg()).evaluate(_det_obs(qty=3,counts={"BOLT_M6":3})); assert result.status==Status.FAIL; assert result.error_code=="MISSING_COMPONENT"
 def test_wrong_component_is_ng():
     result=RuleEngine(_cfg()).evaluate(_det_obs(cls="BOLT_M8",qty=4,counts={"BOLT_M8":4})); assert result.status==Status.FAIL; assert result.error_code=="WRONG_COMPONENT"
+def test_wrong_position_is_ng():
+    obs=Observation("P","I","R02","DETECTION_CLASSIFICATION",detected_class="BOLT_M8",confidence=.96,quantity=2,position={"x":300,"y":150}); result=RuleEngine(_cfg()).evaluate(obs); assert result.status==Status.FAIL; assert result.error_code=="WRONG_POSITION"
 def test_low_confidence_rechecks_with_a_new_observation():
     cfg=_cfg(); orch=InspectionOrchestrator(cfg,RuleEngine(cfg)); inspection=orch.start_product("P"); observations=[_det_obs(confidence=.50),_det_obs(confidence=.96)]; rr=orch.inspect_region(inspection,"R01",observation_provider=lambda attempt:observations[attempt-1]); assert rr.attempts==2; assert rr.status==Status.PASS; assert [o.error_code for o in rr.observations]==["LOW_CONFIDENCE",None]
 def test_recheck_exhaustion_becomes_product_ng():
