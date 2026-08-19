@@ -30,28 +30,29 @@ v0.4 AI Vision Adapter Layer: COMPLETE / architecture baseline.
 v0.5 Machine Vision Layer: COMPLETE / architecture baseline; real hardware is not physically validated.
 v0.6 Rule.cmd v1.0 + typed InspectionPlan: COMPLETE in software/mock scope.
 v0.9 Runtime stabilization: COMPLETE in software/mock scope.
-v0.95 Commissioning framework: COMPLETE in software/mock scope; vendor SDKs and physical line remain unvalidated.
+v0.95 Commissioning framework: COMPLETE in software/mock scope.
+v0.98 Model/config commissioning framework: COMPLETE in software/mock scope; real model artifacts and physical line remain unvalidated.
 
-## v0.95 verified software acceptance
-- Vendor-neutral CallbackCamera, CallbackTrigger and CallbackPLC adapters exist.
-- HardwareFactory is an explicit injection boundary; MockHardwareFactory remains the reference simulator.
-- ImageAcquisition has explicit start/stop lifecycle and refuses capture before start.
-- Production pipeline can be constructed from Rule.cmd and auto-starts acquisition when run_product() is called.
-- Camera settings from Rule.cmd are applied through the hardware abstraction.
-- TimingCollector records acquisition, AI, decision and PLC latency and evaluates configurable budgets.
-- ProductTracker calculates velocity for slowly moving products when position/timestamp data are available.
-- HILRunner executes deterministic commissioning scenarios against injected hardware/model doubles.
-- Existing Rule.cmd remains the source of product configuration; no credentials are stored in it.
-- Automated v0.95 tests cover lifecycle, adapter contracts, timing budget, slow-line tracking and HIL nominal PASS.
+## v0.98 verified software acceptance
+- ModelRegistry compiles model lifecycle metadata from Rule.cmd.
+- Model validation checks path, checksum, version, class map and threshold when production artifacts are required.
+- CalibrationRegistry exposes deterministic region thresholds derived from the typed plan without duplicating product rules.
+- ObservationReplay supports deterministic offline rule evaluation from saved observations.
+- PerformanceMetrics aggregates latency, confidence and grease coverage percentiles.
+- ProductionReleaseGate fails closed for incomplete real-hardware/model commissioning.
+- ProductionInspectionPipeline refuses production_mode when the release gate is not satisfied.
+- Rule.cmd explicitly records uncommissioned model metadata placeholders and never stores credentials.
+- Automated tests cover the new v0.98 software gates.
 
 ## Current next task
-V0.98 AI/model commissioning software:
-1. Add model registry metadata and model lifecycle validation (path, checksum, version, class map).
-2. Add threshold/calibration profiles without hard-coding product rules.
-3. Add deterministic replay from saved frames/observations for offline calibration.
-4. Add performance aggregation (latency percentiles, confidence/coverage distributions).
-5. Add a production release gate that refuses real mode when model/config validation is incomplete.
-6. Expand HIL scenarios for PASS, missing, extra, wrong type, grease failures, recheck and hardware faults.
+V1.0 Software Release Hardening:
+1. Add a single CLI entry point for validate-rule, simulate, replay, and release-gate commands.
+2. Add structured JSON result schema/versioning and compatibility checks.
+3. Add end-to-end scenario fixtures for PASS/NG/recheck/hardware-fault paths.
+4. Add CI quality gates for tests, compile checks and Rule.cmd validation.
+5. Add deterministic configuration hash and inspection-plan hash to every audit/result.
+6. Add operational service loop and graceful shutdown for continuous product inspection.
+7. Produce a documented software release package; keep hardware commissioning explicitly separate.
 
 ## Inspection logic
 Missing/extra: YOLO or RT-DETR detection + expected class/quantity/tolerance.
@@ -80,11 +81,12 @@ Feature branch -> inspect -> implement -> test -> update context -> commit -> PR
 Repository: TrongPhuc1609/Loc
 Baseline branch: main
 Current development branch: main
+Latest v0.98 software baseline commit: 6a1f7e4b03af2390df68d0c79dc3bb9c3ec5129a
 Latest v0.95 baseline commit: 7c602410761b462468beb20b31a1be327e4edcf1
 Latest verified v0.9 merge commit: b422b9336b863811c1487eeeef5137337845db45
 
 ## Current handoff status
-V0.95 commissioning framework is merged into main. Code review completed against the feature branch diff. Physical hardware, vendor SDKs, real AI models, threshold calibration and reject timing are not yet validated.
+V0.98 model/config commissioning framework is implemented on main. This is software/simulation validation only; real model artifacts, vendor SDKs, hardware timing and physical reject behavior are not validated.
 
 ## Known issues / production gates
 - Mock drivers are not production drivers.
@@ -92,13 +94,13 @@ V0.95 commissioning framework is merged into main. Code review completed against
 - Rule thresholds are examples until calibrated on the production line.
 - PLC reject timing and fail-safe electrical behavior require hardware validation.
 - Evidence currently persists normalized audit JSON; raw image persistence is adapter/application dependent.
-- CI execution must be confirmed on GitHub Actions before declaring the v0.95 test suite green.
-- No claim of production readiness is allowed until V0.98 model/config gates and hardware commissioning pass.
+- CI execution must be confirmed on GitHub Actions before declaring the new v0.98 test suite green.
+- No claim of production readiness is allowed until V1.0 software release gates and subsequent hardware commissioning pass.
 
 ## Architecture change record
 DATE: 2026-08-19
-DECISION: Add vendor-neutral hardware injection, acquisition lifecycle enforcement, timing instrumentation and deterministic HIL scenarios.
-REASON: Establish a software commissioning boundary before physical camera/PLC/lighting integration.
-ALTERNATIVES: Bind the core directly to a vendor SDK; rejected because vendor changes would contaminate the inspection core.
-IMPACT: Hardware SDKs can be wrapped by Callback* adapters or a HardwareFactory without changing Rule Engine/Orchestrator logic.
-MIGRATION: Use ProductionInspectionPipeline.from_rule_file(..., hardware_factory=...) for real adapters; keep MockHardwareFactory for CI.
+DECISION: Add model lifecycle validation, deterministic calibration/replay/performance tooling and a fail-closed production release gate.
+REASON: Prevent uncommissioned AI models or incomplete hardware configuration from entering production mode.
+ALTERNATIVES: Trust model paths/thresholds at runtime; rejected because configuration drift and unverified model artifacts are production risks.
+IMPACT: Adds ModelRegistry, CalibrationRegistry, ObservationReplay, PerformanceMetrics and ProductionReleaseGate.
+MIGRATION: Continue using Rule.cmd as the single product configuration source; add model_version/checksum_sha256/class_map when commissioning real models.
