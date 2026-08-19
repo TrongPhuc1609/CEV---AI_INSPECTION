@@ -6,6 +6,8 @@ from src.integration.commissioning import (
     guarded_reject_test,
 )
 from src.integration.plc import Decision, PLCCommand
+from src.machine_vision.camera.base import MockCamera
+from src.machine_vision.trigger.base import MockTrigger
 
 
 class RealCamera:
@@ -45,15 +47,14 @@ class FakePipeline:
         return inspection
 
 
-def test_preflight_rejects_mock_pipeline():
+def test_preflight_rejects_mock_camera_and_trigger():
     pipeline = SimpleNamespace(
-        acquisition=SimpleNamespace(camera=SimpleNamespace(__class__=type("MockCamera", (), {})), trigger=None),
-        plc=SimpleNamespace(commands=[]),
+        acquisition=SimpleNamespace(camera=MockCamera("CAM01"), trigger=MockTrigger()),
+        plc=RecordingPLC(),
     )
-    # Use the actual class names used by the production adapters.
-    pipeline.acquisition.camera.__class__ = type("MockCamera", (), {})
     report = RealHardwareCommissioning(pipeline, CommissioningAcceptanceProfile()).preflight()
     assert "CAMERA_IS_MOCK" in report.blockers
+    assert "TRIGGER_IS_MOCK" in report.blockers
 
 
 def test_real_commissioning_runs_bounded_samples_and_records_plc():
