@@ -1,15 +1,12 @@
 """Physical commissioning readiness checks.
 
-This module deliberately does not claim that hardware is healthy.  It checks
+This module deliberately does not claim that hardware is healthy. It checks
 whether the software configuration and supplied artifacts are sufficient to
 START a physical commissioning run, and keeps unresolved field items explicit.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Iterable
-
-from .release_gate import ProductionReleaseGate
+from dataclasses import dataclass
 from ..models.registry import ModelRegistry
 
 
@@ -54,11 +51,9 @@ class CommissioningReport:
 class PhysicalCommissioningGate:
     """Gate that must pass before a real line may be enabled.
 
-    ``real_hardware`` and ``model_root`` are explicit inputs so this check can
-    be executed in CI and on a commissioning laptop without hidden state.
+    ``require_real_hardware`` and ``model_root`` are explicit inputs so this
+    check can run in CI and on a commissioning laptop without hidden state.
     """
-
-    REQUIRED_DRIVERS = {"camera", "trigger", "plc"}
 
     def evaluate(self, plan, model_root: str = ".", require_real_hardware: bool = True) -> CommissioningReport:
         checks: list[CommissioningCheck] = []
@@ -69,20 +64,28 @@ class PhysicalCommissioningGate:
         except ValueError as exc:
             checks.append(CommissioningCheck("RULE_PLAN_VALID", False, details=str(exc)))
 
-        for name, configs in (
-            ("camera", plan.cameras),
-            ("trigger", plan.triggers),
-        ):
-            if configs:
-                driver = str(next(iter(configs.values())).driver).upper()
-                passed = not require_real_hardware or driver != "MOCK"
-                checks.append(CommissioningCheck(
-                    f"{name.upper()}_DRIVER",
-                    passed,
-                    details=f"driver={driver}" + ("" if passed else "; real driver required"),
-                ))
-            else:
-                checks.append(CommissioningCheck(f"{name.upper()}_DRIVER", False, details="no configuration"))
+        # CameraConfig has an explicit driver. TriggerConfig intentionally does
+        # not: its physical adapter is identified through settings.driver.
+        camera_drivers = [str(cfg.driver).upper() for cfg in plan.cameras.values()]
+        camera_ok = bool(camera_drivers) and (not require_real_hardware or all(driver != "MOCK" for driver in camera_drivers))
+        checks.append(CommissioningCheck(
+            "CAMERA_DRIVER",
+            camera_ok,
+            details=(f"drivers={camera_drivers}" if camera_drivers else "no camera configured")
+            + ("; real driver required" if require_real_hardware and not camera_ok else ""),
+        ))
+
+        trigger_drivers = [str(cfg.settings.get("driver", "")).upper() for cfg in plan.triggers.values()]
+        trigger_ok = bool(trigger_drivers) and (
+            not require_real_hardware
+            or all(driver and driver != "MOCK" for driver in trigger_drivers)
+        )
+        checks.append(CommissioningCheck(
+            "TRIGGER_DRIVER",
+            trigger_ok,
+            details=(f"drivers={trigger_drivers}" if trigger_drivers else "no trigger configured")
+            + ("; explicit real trigger driver required" if require_real_hardware and not trigger_ok else ""),
+        ))
 
         plc_driver = str(plan.plc.driver).upper()
         checks.append(CommissioningCheck(
@@ -98,7 +101,7 @@ class PhysicalCommissioningGate:
 
         registry = ModelRegistry.from_plan(plan)
         model_results = registry.validate(model_root, require_artifact=require_real_hardware)
-        model_errors = [f"{r.model_id}: {error}" for r in model_results for error in r.errors]
+        model_errors = [f"{result.model_id}: {error}" for result in model_results for error in result.errors]
         checks.append(CommissioningCheck(
             "MODEL_ARTIFACTS",
             not model_errors,
@@ -121,7 +124,7 @@ class PhysicalCommissioningGate:
             details="reject output enabled" if plan.plc.reject_enabled else "PLC reject must be enabled",
         ))
 
-        # Field measurements cannot be inferred from software.  Keep them as
+        # Field measurements cannot be inferred from software. Keep them as
         # explicit non-blocking checklist entries until commissioning values
         # are recorded in a future calibration/line profile.
         for name in (
@@ -135,7 +138,7 @@ class PhysicalCommissioningGate:
             checks.append(CommissioningCheck(name, False, blocking=False, details="field measurement not recorded"))
 
         return CommissioningReport(
-            ready=not any(c.blocking and not c.passed for c in checks),
+            ready=not any(check.blocking and not check.passed for check in checks),
             checks=tuple(checks),
         )
 
