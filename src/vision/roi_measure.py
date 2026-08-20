@@ -85,8 +85,11 @@ def detect_green_board_roi(image: np.ndarray) -> RoiBox | None:
     production ROI until validated against multiple real GOOD/NG frames.
     """
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower = np.array([30, 35, 25], dtype=np.uint8)
-    upper = np.array([95, 255, 255], dtype=np.uint8)
+    # The current camera frame has a blue conveyor/background. Keep the bootstrap
+    # hue range away from that blue and require meaningful saturation so white
+    # hardware/background does not become the board candidate.
+    lower = np.array([35, 60, 25], dtype=np.uint8)
+    upper = np.array([85, 255, 255], dtype=np.uint8)
     mask = cv2.inRange(hsv, lower, upper)
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
@@ -94,8 +97,19 @@ def detect_green_board_roi(image: np.ndarray) -> RoiBox | None:
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return None
-    contour = max(contours, key=cv2.contourArea)
-    x, y, width, height = cv2.boundingRect(contour)
-    if width * height < image.shape[0] * image.shape[1] * 0.02:
+
+    candidates = []
+    image_area = image.shape[0] * image.shape[1]
+    for contour in contours:
+        x, y, width, height = cv2.boundingRect(contour)
+        area = width * height
+        if area < image_area * 0.02:
+            continue
+        aspect = width / float(height)
+        if 1.4 <= aspect <= 3.2:
+            candidates.append((area, x, y, width, height))
+
+    if not candidates:
         return None
+    _, x, y, width, height = max(candidates)
     return RoiBox(x, y, width, height)
