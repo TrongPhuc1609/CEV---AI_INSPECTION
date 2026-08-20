@@ -1,0 +1,43 @@
+{
+  "product_id": "PCB-REAL-001",
+  "inspection_id": "PCB-REAL-001-REPLAY",
+  "observations": [
+    {
+      "region_id": "R01",
+      "method": "DETECTION",
+      "confidence": 0.95,
+      "quantity": 4,
+      "expected_quantity": 4,
+      "status": "PASS"
+    },
+    {
+      "region_id": "R02",
+      "method": "DETECTION_CLASSIFICATION",
+      "confidence": 0.96,
+      "detected_class": "BOLT_M8",
+      "expected_class": "BOLT_M8",
+      "quantity": 2,
+      "expected_quantity": 2,
+      "position": {"x": 200, "y": 150},
+      "status": "PASS"
+    },
+    {
+      "region_id": "R03",
+      "method": "SEGMENTATION",
+      "confidence": 0.92,
+      "coverage_percent": 75,
+      "status": "PASS"
+    },
+    {
+      "region_id": "R04",
+      "method": "SEGMENTATION",
+      "confidence": 0.92,
+      "coverage_percent": 75,
+      "metadata": {
+        "target_zone_coverage_percent": 75,
+        "forbidden_zone_violation": false
+      },
+      "status": "PASS"
+    }
+  ]
+}
