@@ -51,7 +51,7 @@ v1.9 Physical Vision Trial preparation: ACTIVE.
 - Camera: Sanwa Supply CMS-V30SETBK USB webcam.
 - PLC: not installed; PLC remains simulated.
 - Product: real PCB.
-- Current objective: capture and characterize real PCB images before product-specific AI model commissioning.
+- Current objective: verify the complete image-to-decision software path using real PCB image evidence before product-specific AI model commissioning.
 - Capture tool: `CAPTURE_CAMERA.bat` -> `tools/capture_camera.py`.
 - Captured evidence directory: `data/physical_trial/`.
 - A real camera frame is acquisition evidence only; it is not production inspection evidence.
@@ -64,6 +64,13 @@ v1.9 Physical Vision Trial preparation: ACTIVE.
 5. Collect GOOD/NG datasets and calibrate thresholds.
 6. Run offline/replay validation.
 7. Only then commission real motion timing, real PLC and physical reject.
+
+## Current implementation step: real-image replay boundary
+- `tools/run_image_replay.py` loads and decodes a real image with OpenCV, attaches that image path as evidence to observations, and sends those observations through the existing Rule Engine + Inspection Orchestrator.
+- `RUN_REAL_IMAGE_TEST.bat` provides the Windows entry point.
+- `tools/real_image_case.json` is a deterministic GOOD-case sidecar. It is intentionally not an AI inference result.
+- This step validates real-image ingestion/evidence propagation and decision integration without falsely claiming that components or grease have been detected from pixels.
+- The next implementation step is a real ROI extractor/inspection adapter; it must produce measurable observations from pixels before AI model commissioning.
 
 ## V1.9 implementation rule
 Do not invent product-specific ROI coordinates, component classes, AI thresholds, motion values or lighting values without physical evidence. Configuration placeholders are allowed, but must be marked as commissioning parameters.
