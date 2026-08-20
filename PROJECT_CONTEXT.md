@@ -65,12 +65,13 @@ v1.9 Physical Vision Trial preparation: ACTIVE.
 6. Run offline/replay validation.
 7. Only then commission real motion timing, real PLC and physical reject.
 
-## Current implementation step: real-image replay boundary
-- `tools/run_image_replay.py` loads and decodes a real image with OpenCV, attaches that image path as evidence to observations, and sends those observations through the existing Rule Engine + Inspection Orchestrator.
-- `RUN_REAL_IMAGE_TEST.bat` provides the Windows entry point.
-- `tools/real_image_case.json` is a deterministic GOOD-case sidecar. It is intentionally not an AI inference result.
-- This step validates real-image ingestion/evidence propagation and decision integration without falsely claiming that components or grease have been detected from pixels.
-- The next implementation step is a real ROI extractor/inspection adapter; it must produce measurable observations from pixels before AI model commissioning.
+## Current implementation step: machine-vision measurement boundary
+- `src/vision/roi_measure.py` provides deterministic OpenCV ROI measurements from real pixels and a bootstrap green-board locator for the current PCB image. The locator is not a commissioned production ROI.
+- `tools/inspect_real_image.py` exposes the measurements from a real image on the command line.
+- `src/machine_vision/measurement_adapter.py` converts those measurements into the normalized `Observation` contract.
+- The adapter intentionally returns `UNCERTAIN`; it does not decide PASS/FAIL. `RuleEngine` remains the decision owner.
+- `tests/test_measurement_adapter.py` verifies the normalized observation boundary and missing-ROI fail-closed behavior.
+- This step validates real-pixel -> measurement -> Observation integration. It does not claim that components or grease are detected yet.
 
 ## V1.9 implementation rule
 Do not invent product-specific ROI coordinates, component classes, AI thresholds, motion values or lighting values without physical evidence. Configuration placeholders are allowed, but must be marked as commissioning parameters.
