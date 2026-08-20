@@ -12,7 +12,7 @@ if not exist .venv\Scripts\python.exe (
   pause
   exit /b 2
 )
-.venv\Scripts\python.exe -m src.vision.image_inspection_runner "%~1"
+.venv\Scripts\python.exe tools\run_machine_vision_replay.py "%~1"
 if errorlevel 1 (
   echo.
   echo Machine-vision replay returned NG/ERROR.
