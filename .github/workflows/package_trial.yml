@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/v1.9-model-calibration
+  workflow_dispatch:
 
 jobs:
   package:
