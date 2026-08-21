@@ -18,6 +18,7 @@ from src.vision.image_inspection_runner import RealImageInspectionRunner
 
 def load_manifest(path: Path) -> list[dict]:
     rows: list[dict] = []
+    seen_ids: set[str] = set()
     for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip() or line.lstrip().startswith("#"):
             continue
@@ -28,8 +29,17 @@ def load_manifest(path: Path) -> list[dict]:
         for key in ("sample_id", "image", "ground_truth"):
             if key not in row:
                 raise ValueError(f"Missing '{key}' on line {line_no}")
+        sample_id = row["sample_id"]
+        if not isinstance(sample_id, str) or not sample_id.strip():
+            raise ValueError(f"sample_id must be a non-empty string on line {line_no}")
+        if sample_id in seen_ids:
+            raise ValueError(f"Duplicate sample_id '{sample_id}' on line {line_no}")
+        image = row["image"]
+        if not isinstance(image, str) or not image.strip():
+            raise ValueError(f"image must be a non-empty string on line {line_no}")
         if row["ground_truth"] not in {"GOOD", "NG"}:
             raise ValueError(f"ground_truth must be GOOD or NG on line {line_no}")
+        seen_ids.add(sample_id)
         rows.append(row)
     if not rows:
         raise ValueError("Manifest contains no samples")
