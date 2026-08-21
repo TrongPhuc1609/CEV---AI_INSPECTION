@@ -76,8 +76,19 @@ v1.9 Physical Vision Trial preparation: ACTIVE.
 - `tests/test_machine_vision_rule_engine.py` verifies deterministic measurement threshold decisions.
 - This step validates real-pixel -> measurement -> Observation -> RuleEngine -> Orchestrator integration. It does not claim that components or grease are detected yet.
 
+## V1.9 real-world validation tooling
+- `data/physical_trial/README.md` defines the labelled real-image dataset contract.
+- `data/physical_trial/ground_truth.schema.json` defines required manifest fields and GOOD/NG ground truth values.
+- `tools/run_real_trial_batch.py` replays every labelled image through the current inspection path and records the actual decision without inferring or changing ground truth.
+- `tools/evaluate_real_trial.py` computes false accepts, false rejects, UNCERTAIN rate and coverage and emits JSON plus a human-readable HTML report.
+- `docs/REAL_WORLD_VALIDATION_PLAN.md` defines the evidence gates from offline replay through camera, motion/frame correlation and real PLC reject.
+- These tools do not create a dataset automatically and do not turn a one-image demonstration into an acceptance claim. Real ground truth and product-specific acceptance thresholds remain commissioning inputs.
+
 ## V1.9 implementation rule
 Do not invent product-specific ROI coordinates, component classes, AI thresholds, motion values or lighting values without physical evidence. Configuration placeholders are allowed, but must be marked as commissioning parameters.
+
+## Evidence rule
+Every real-world claim must identify its evidence class: S (software/CI), R (real-image offline replay), C (live camera characterization), M (real motion/timing), or P (real PLC/physical reject). S evidence must never be presented as R/C/M/P evidence.
 
 ## V1.0 software acceptance
 - Single CLI supports `validate-rule`, `simulate`, `replay` and `release-gate`.
