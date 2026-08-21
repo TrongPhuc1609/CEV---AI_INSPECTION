@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GPT AI Inspection Physical Trial Manifest Row",
+  "type": "object",
+  "required": ["sample_id", "image", "ground_truth"],
+  "properties": {
+    "sample_id": {"type": "string", "minLength": 1},
+    "image": {"type": "string", "minLength": 1},
+    "ground_truth": {"type": "string", "enum": ["GOOD", "NG"]},
+    "defect_type": {"type": "string"},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}
