@@ -1,0 +1,2 @@
+{"sample_id":"GOOD_001","image":"data/physical_trial/images/GOOD_001.jpg","ground_truth":"GOOD","defect_type":"","notes":"Reference good board"}
+{"sample_id":"NG_001","image":"data/physical_trial/images/NG_001.jpg","ground_truth":"NG","defect_type":"missing_component","notes":"Verified by operator"}
