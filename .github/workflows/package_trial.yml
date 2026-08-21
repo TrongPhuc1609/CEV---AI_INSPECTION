@@ -16,35 +16,27 @@ jobs:
       - name: Build trial ZIP
         shell: bash
         run: |
-          rm -rf package GPT_AI_Inspection
+          set -euo pipefail
+          rm -rf package GPT_AI_Inspection 'GPT AI Inspection.zip'
           mkdir -p GPT_AI_Inspection
-          rsync -a --exclude='.git' --exclude='.venv' --exclude='__pycache__' --exclude='.pytest_cache' --exclude='package' --exclude='GPT_AI_Inspection' ./ GPT_AI_Inspection/
-          cat > GPT_AI_Inspection/TEST_REAL_PCB.md <<'EOF'
-# GPT AI Inspection - Real PCB trial
-
-## Current setup
-- Camera: Sanwa Supply CMS-V30SETBK USB webcam
-- PLC: not installed; PLC remains simulated
-- Product: real PCB
-
-## First offline test
-1. Put one real PCB image into `data/physical_trial/`.
-2. Run `RUN_MACHINE_VISION_REPLAY.bat`.
-3. Review the printed measurement, Observation, and RuleEngine decision.
-
-This trial validates the real-image machine-vision path. It does not yet claim component/grease defect classification or production PLC/reject control.
-
-## Camera capture
-When the USB camera is connected, run `CAPTURE_CAMERA.bat` and use the captured image as offline evidence.
-EOF
-          7z a -tzip -mx=5 'GPT_AI Inspection.zip' GPT_AI_Inspection
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.venv/' \
+            --exclude='__pycache__/' \
+            --exclude='.pytest_cache/' \
+            --exclude='package/' \
+            --exclude='GPT_AI_Inspection/' \
+            --exclude='GPT AI Inspection.zip' \
+            ./ GPT_AI_Inspection/
+          test -f GPT_AI_Inspection/TEST_REAL_PCB.md
+          zip -qr 'GPT AI Inspection.zip' GPT_AI_Inspection
+          test -s 'GPT AI Inspection.zip'
+          unzip -tq 'GPT AI Inspection.zip'
 
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: GPT_AI Inspection
+          name: GPT_AI_Inspection
           path: 'GPT AI Inspection.zip'
           if-no-files-found: error
           retention-days: 30
-
-# Trial package trigger verification
