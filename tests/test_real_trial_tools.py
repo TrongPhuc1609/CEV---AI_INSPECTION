@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from src.models.result import Status
 from tools.evaluate_real_trial import main as evaluate_main
 from tools.evaluate_real_trial import normalize_prediction
 from tools.run_real_trial_batch import load_manifest
