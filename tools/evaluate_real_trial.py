@@ -4,6 +4,9 @@ Usage:
   python tools/evaluate_real_trial.py \
     data/physical_trial/manifest.jsonl \
     --predictions data/physical_trial/results/predictions.jsonl
+
+The runtime's normalized Status enum uses FAIL; the trial report presents that
+as NG because NG is the product-level inspection terminology.
 """
 from __future__ import annotations
 
@@ -12,7 +15,7 @@ import html
 import json
 from pathlib import Path
 
-VALID_PREDICTIONS = {"PASS", "NG", "UNCERTAIN"}
+VALID_PREDICTIONS = {"PASS", "FAIL", "NG", "UNCERTAIN"}
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -25,6 +28,12 @@ def load_jsonl(path: Path) -> list[dict]:
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid JSON on line {line_no}: {exc}") from exc
     return rows
+
+
+def normalize_prediction(value: str) -> str:
+    if value not in VALID_PREDICTIONS:
+        raise ValueError(f"Invalid prediction: {value}")
+    return "NG" if value == "FAIL" else value
 
 
 def main() -> int:
@@ -46,9 +55,7 @@ def main() -> int:
         if sample_id not in manifest:
             raise ValueError(f"Prediction has unknown sample_id: {sample_id}")
         gt = manifest[sample_id]["ground_truth"]
-        pred = row.get("prediction")
-        if pred not in VALID_PREDICTIONS:
-            raise ValueError(f"Invalid prediction for {sample_id}: {pred}")
+        pred = normalize_prediction(row.get("prediction"))
         counts[gt][pred] += 1
         details.append({
             "sample_id": sample_id,
